@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>DNF 文本工具</title>
+		<script type="text/javascript" src="./js/jquery-3.2.1.min.js"></script>
+		<script type="text/javascript" src="./js/xlsx.full.min.js"></script>
+		<script type="text/javascript" src="./js/FileSaver.min.js"></script>
+		<script type="text/javascript">
+
+			
+			var contents;
+
+			/**
+			 * 读取txt文件 
+			 * @param txtFilePath: txt文件路径
+			 */
+			function readTxtFile() {
+				// 可能多个文件
+				var txtFile = $("#txtFile")[0];
+
+				// 获取第一个文件,File对象
+				var file = txtFile.files[0];
+
+				var reader = new FileReader();
+
+				// 文件读取完毕时触发事件
+				reader.onload = function() {
+					$("#fileDisplayArea").html(this.result);
+					contents = handleResult(this.result);
+					// $("#fileChangeDisplayArea").html(contents);
+				}
+				// GB18030 读取ANSI编码txt文件
+				reader.readAsText(file, "GB18030");
+			}
+
+			/**
+			 * 处理文本内容
+			 */
+			function handleResult(result) {
+				var res = [];
+    
+                var lines = result.split("\n");
+                lines.forEach(function(value, index, array) {
+                	// 替换到一些特殊字符串
+                	var replaceStr = handleReplace(value);
+
+                	// 切分一个字符串的key和value
+                	res.push(splitDnfText(replaceStr));
+                });
+
+				return res;
+			}
+
+			function handleReplace(str) {
+				return str.replace(/(\$[\d\w]+\$)|(\*+)/g, "").trim();
+			}
+
+			function splitDnfText(str) {
+
+				var res = [];
+
+				var numStartPos = str.length;
+				for (var i = str.length - 1; i >= 0; i --) {
+					if ("0123456789".indexOf(str.charAt(i)) != -1) { // 是数字
+						numStartPos --;
+					} else {
+						break;
+					}
+				}	
+
+				res[0] = str.substr(0, numStartPos);
+				res[1] = str.substr(numStartPos);
+
+				return res;
+			}	
+
+			/**
+			 * 写入excel到制定位置
+			 * @param excelFilePath 
+			 * @param contents
+			 */
+			 function writeExcel() {
+
+			 	// 获取sheet
+			 	var sheet = XLS.utils.aoa_to_sheet(contents)
+
+			 	// 创建book
+			 	var workBook = XLS.utils.book_new();
+
+			 	// 创建sheet
+			 	XLS.utils.book_append_sheet(workBook, sheet, "sheet1");
+
+			 	var wopts = { bookType:'xls', bookSST:false, type:'binary' };
+
+			 	var wbout = XLSX.write(workBook, wopts);
+
+			 	saveAs(new Blob([s2ab(wbout)],{type:"application/octet-stream"}), "dnf" + Date.parse(new Date()) + ".xls");	
+
+			 }
+
+			 function s2ab(s) {
+				var buf = new ArrayBuffer(s.length);
+				var view = new Uint8Array(buf);
+				for (var i=0; i!=s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
+				return buf;
+			}
+
+		</script>
+	</head>
+
+	<body>
+		<input type="file" name="txtFile" id="txtFile" onchange="readTxtFile()" /> 
+		<input type="button" value="转换" name="changeBtn" id="changeBtn" onclick="writeExcel()"/> 
+		<pre id="fileDisplayArea"> </pre>
+		
+
+	</body>
+</html>
